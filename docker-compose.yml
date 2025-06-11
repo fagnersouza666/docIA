@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  doc-ia-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.smart
+    container_name: doc-ia-container
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./documents:/app/documents
+      - atas-smart-cache:/app/.cache
+    environment:
+      - FLASK_ENV=production
+      - TRANSFORMERS_CACHE=/app/.cache
+    restart: unless-stopped
+
+volumes:
+  atas-smart-cache:

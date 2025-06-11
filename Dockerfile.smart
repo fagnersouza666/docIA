@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instala dependências do sistema para compilação
+RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY smart_app.py .
+COPY smart_indexer.py .
+
+# Cria o diretório de documentos se não existir
+RUN mkdir -p /app/documents
+
+ENV PYTHONUNBUFFERED=1
+ENV TRANSFORMERS_CACHE=/app/.cache
+ENV FLASK_APP=smart_app.py
+
+EXPOSE 5000
+
+# Comando para rodar a aplicação
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]

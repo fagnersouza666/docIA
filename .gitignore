@@ -1,0 +1,42 @@
+# Ambiente virtual Python
+.venv/
+venv/
+
+# Cache e arquivos temporários Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Arquivos de log
+*.log
+
+# Dados sensíveis e variáveis de ambiente
+.env
+.env.*
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Documentos de exemplo (opcional, remova se quiser versionar exemplos reais)
+documents/*.txt
+documents/*.pdf
+documents/*.docx
+
+# Arquivos do próprio Git
+.git/
+
+# Outros arquivos temporários
+*.swp
+*.swo
+
+# Cache de modelos HuggingFace/Ollama
+/app/.cache/
+atas-smart-cache/
+
+# Arquivos de build Docker
+*.tar
+*.img
