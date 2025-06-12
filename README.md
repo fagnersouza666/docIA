@@ -1,39 +1,46 @@
 # docIA - Sistema de Busca Inteligente de Documentos
 
-Sistema avançado de busca e análise de documentos (atas, relatórios, etc.) usando IA generativa. Processa arquivos PDF, DOCX e TXT, oferecendo respostas inteligentes em linguagem natural com suporte a modelos locais (Ollama) para total privacidade.
+O **docIA** é uma aplicação para busca e análise de documentos que utiliza IA generativa local para preservar a privacidade. O projeto processa arquivos nos formatos **PDF**, **DOCX** e **TXT**, permitindo consultas em linguagem natural e oferecendo resultados relevantes por meio de busca semântica.
 
-## ✨ Funcionalidades
+## ✨ Recursos Principais
 
-- **Busca Semântica**: Encontra informações por significado, não apenas por palavras-chave.
-- **IA Generativa Local**: Usa Ollama para respostas naturais, mantendo os dados no seu ambiente.
-- **Reindexação Automática**: Novos documentos na pasta `documents/` são indexados em tempo real.
-- **Multi-Formato**: Suporta PDF, DOCX e TXT.
-- **Fácil Deploy**: Containerizado com Docker para setup rápido.
+- **Busca Semântica** – Encontre informações pelo significado do texto, não apenas por palavras-chave.
+- **IA Generativa Local** – Usa o Ollama para gerar respostas de forma privada, sem enviar seus dados para a nuvem.
+- **Reindexação Automática** – Novos arquivos adicionados à pasta `documents/` são processados e indexados em tempo real.
+- **Suporte Multi‑Formato** – Aceita documentos em PDF, DOCX e TXT.
+- **Deploy Simplificado** – Projeto containerizado com Docker para execução rápida em qualquer ambiente.
 
-## 🚀 Como Rodar
+## 🚀 Como Executar
 
-### Pré-requisitos
-- Docker e Docker Compose
-- (Opcional) Ollama para respostas de IA generativa de alta qualidade.
+### Pré‑requisitos
 
-### Passos
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/fagnersouza666/docIA.git
-    cd docIA
-    ```
+- [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
+- (Opcional) [Ollama](https://github.com/ollama/ollama) configurado para respostas de IA com maior qualidade
 
-2.  **Adicione seus documentos:**
-    - Coloque seus arquivos (`.pdf`, `.docx`, `.txt`) na pasta `documents/`.
+### Passo a Passo
 
-3.  **Inicie o sistema:**
-    ```bash
-    docker-compose up -d --build
-    ```
-    O sistema irá iniciar e indexar os documentos automaticamente.
+1. **Clone o repositório**
 
-4.  **Acesse a interface:**
-    - Abra seu navegador em **http://localhost:5000**.
+   ```bash
+   git clone https://github.com/fagnersouza666/docIA.git
+   cd docIA
+   ```
+
+2. **Adicione seus documentos**
+
+   Coloque arquivos `.pdf`, `.docx` ou `.txt` na pasta `documents/` (crie-a se ainda não existir).
+
+3. **Inicie o sistema**
+
+   ```bash
+   docker-compose up -d --build
+   ```
+
+   O serviço irá iniciar e indexar os documentos encontrados automaticamente.
+
+4. **Acesse a interface**
+
+   Abra o navegador em [http://localhost:5000](http://localhost:5000) para realizar buscas.
 
 ## ⚙️ Estrutura do Projeto
 
@@ -47,3 +54,4 @@ docIA/
 ├── docker-compose.yml    # Orquestrador Docker
 └── README.md             # Este arquivo
 ```
+
