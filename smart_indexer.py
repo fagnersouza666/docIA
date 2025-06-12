@@ -33,31 +33,25 @@ class SmartDocumentIndexer:
     def _init_qa_model(self):
         """Inicializa modelo de linguagem generativo para respostas naturais"""
         try:
-            logger.info("Inicializando modelo de linguagem generativo...")
-            # Tentar usar Ollama local
-            try:
-                import requests
-                if requests.get("http://localhost:11434/api/tags", timeout=2).status_code == 200:
-                    models = requests.get("http://localhost:11434/api/tags").json().get('models', [])
-                    if models:
-                        self.llm_type = "ollama"
-                        self.model_name = models[0]['name']
-                        logger.info(f"✅ Ollama detectado com modelo: {self.model_name}")
-                        return
-            except: pass
-            # Fallback para Hugging Face
-            try:
-                from transformers import pipeline
-                self.qa_pipeline = pipeline("text-generation", model="microsoft/DialoGPT-medium", device=-1)
-                self.llm_type = "huggingface"
-                logger.info("✅ Modelo Hugging Face generativo carregado")
+            logger.info("Inicializando modelo de linguagem generativo (padrão Ollama)...")
+            import requests
+            model_env = os.getenv("OLLAMA_MODEL")
+            if requests.get("http://localhost:11434/api/tags", timeout=5).status_code == 200:
+                models = requests.get("http://localhost:11434/api/tags").json().get('models', [])
+                self.llm_type = "ollama"
+                if model_env:
+                    self.model_name = model_env
+                elif models:
+                    self.model_name = models[0]['name']
+                else:
+                    self.model_name = "llama2"
+                logger.info(f"✅ Ollama configurado com modelo: {self.model_name}")
                 return
-            except: pass
-            logger.warning("Usando modo de resposta baseado em contexto (fallback)")
+            logger.warning("Servidor Ollama não encontrado, usando fallback simples")
             self.qa_pipeline = None
             self.llm_type = "simple"
         except Exception as e:
-            logger.error(f"Erro ao inicializar modelo generativo: {e}")
+            logger.error(f"Erro ao inicializar modelo Ollama: {e}")
             self.qa_pipeline = None
             self.llm_type = "simple"
 
