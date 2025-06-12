@@ -4,7 +4,6 @@ import os
 from smart_indexer import SmartDocumentIndexer
 import logging
 import threading
-import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 

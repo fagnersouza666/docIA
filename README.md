@@ -45,7 +45,5 @@ docIA/
 ├── requirements.txt      # Dependências Python
 ├── Dockerfile.smart      # Definição do container
 ├── docker-compose.yml    # Orquestrador Docker
-├── setup_ollama.py       # Script de ajuda para configurar Ollama
-├── install.sh            # Script de instalação de dependências
 └── README.md             # Este arquivo
 ```
