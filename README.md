@@ -38,7 +38,7 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
 
    O serviço irá iniciar e indexar os documentos encontrados automaticamente.
 
-   Se o Ollama estiver disponível, o sistema verifica se o modelo **Mistral 7B** já foi baixado. Caso não esteja, ele será baixado automaticamente pelo Ollama. Se o Ollama não estiver em execução, o sistema carregará o modelo pela Hugging Face (requer mais recursos).
+   Se o Ollama estiver disponível, o sistema verifica se o modelo **Mistral 7B** já foi baixado e faz o download automático se necessário. Caso o Ollama não esteja em execução, o modelo será carregado via Hugging Face (requer mais recursos).
 
 4. **Acesse a interface**
 
