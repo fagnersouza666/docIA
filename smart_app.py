@@ -22,14 +22,67 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <title>Busca Inteligente de Atas</title>
     <style>
-        body { font-family: sans-serif; max-width: 1200px; margin: auto; padding: 20px; background: #f0f2f5; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        input[type="text"] { flex: 1; padding: 12px; font-size: 16px; border-radius: 20px; border: 1px solid #ccc; }
-        button { padding: 12px 20px; font-size: 16px; border-radius: 20px; border: none; cursor: pointer; background: #007bff; color: white; }
-        .stats { background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-        .ai-answer { background: #e7f3ff; border-left: 5px solid #007bff; padding: 15px; border-radius: 8px; margin-top: 10px; }
-        .loading, .no-results { text-align: center; padding: 20px; color: #6c757d; }
+        body { font-family: sans-serif; max-width: 1400px; margin: auto; padding: 20px; background: #f0f2f5; }
+        .container { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .search-box { display: flex; gap: 15px; margin-bottom: 30px; }
+        input[type="text"] { flex: 1; padding: 15px; font-size: 17px; border-radius: 25px; border: 2px solid #ddd; transition: border-color 0.3s; }
+        input[type="text"]:focus { border-color: #007bff; outline: none; }
+        button { padding: 15px 25px; font-size: 16px; border-radius: 25px; border: none; cursor: pointer; background: #007bff; color: white; transition: background 0.3s; }
+        button:hover { background: #0056b3; }
+        .stats { background: #e9ecef; padding: 20px; border-radius: 10px; margin-bottom: 30px; text-align: center; font-size: 16px; }
+        .ai-answer { 
+            background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%); 
+            border-left: 6px solid #007bff; 
+            padding: 40px; 
+            border-radius: 12px; 
+            margin-top: 25px;
+            min-height: 300px;
+            max-height: 800px;
+            overflow-y: auto;
+            font-size: 17px;
+            line-height: 1.8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e3f2fd;
+        }
+        #results {
+            min-height: 350px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .loading, .no-results { 
+            text-align: center; 
+            padding: 60px; 
+            color: #6c757d; 
+            font-size: 18px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+        .response-text {
+            font-size: 17px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .confidence-info {
+            font-size: 15px;
+            color: #666;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e3f2fd;
+            font-weight: 500;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        h3 {
+            color: #2c3e50;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -56,9 +109,12 @@ HTML_TEMPLATE = """
                         const result = data.results[0];
                         let html = '<h3>Resposta:</h3>';
                         if (result.ai_answer) {
-                            html += `<div class="ai-answer"><b>Resposta IA:</b> ${result.ai_answer} <br><small>Confiança: ${Math.round(result.confidence * 100)}%</small></div>`;
+                            html += `<div class="ai-answer">
+                                <div class="response-text"><b>Resposta IA:</b> ${result.ai_answer}</div>
+                                <div class="confidence-info">Confiança: ${Math.round(result.confidence * 100)}%</div>
+                            </div>`;
                         } else {
-                            html += '<div>Nenhuma resposta direta encontrada, mas o trecho a seguir pode ser útil.</div>';
+                            html += '<div class="ai-answer"><div class="response-text">Nenhuma resposta direta encontrada, mas o trecho a seguir pode ser útil.</div></div>';
                         }
                         resultsDiv.innerHTML = html;
                     } else {
@@ -72,7 +128,13 @@ HTML_TEMPLATE = """
         function loadStats() {
             fetch('/stats').then(res => res.json()).then(data => {
                 if (data.success) {
-                    document.getElementById('stats').innerText = `${data.total_documents} documentos indexados. IA Ativa: ${data.has_ai_model ? 'Sim' : 'Não'}.`;
+                    let modelInfo = '';
+                    if (data.model_status.includes('Sistema Interno')) {
+                        modelInfo = ` | Modelo: ${data.model_status} ⚠️ (Instale Ollama+Mistral para melhor qualidade)`;
+                    } else {
+                        modelInfo = ` | Modelo: ${data.model_status} ✅`;
+                    }
+                    document.getElementById('stats').innerText = `${data.total_documents} documentos indexados${modelInfo}`;
                 }
             });
         }
