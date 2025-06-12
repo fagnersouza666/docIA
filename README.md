@@ -15,7 +15,7 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
 ### Pré‑requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
-- (Opcional) [Ollama](https://github.com/ollama/ollama) configurado para respostas de IA com maior qualidade
+- [Ollama](https://github.com/ollama/ollama) – já incluído no container para gerar as respostas de IA
 
 ### Passo a Passo
 
@@ -36,7 +36,7 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
    docker-compose up -d --build
    ```
 
-   O serviço irá iniciar e indexar os documentos encontrados automaticamente.
+   O serviço irá iniciar o Ollama automaticamente, baixar o modelo padrão se necessário e indexar os documentos encontrados.
 
 4. **Acesse a interface**
 

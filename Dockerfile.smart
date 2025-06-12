@@ -3,13 +3,20 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Instala dependências do sistema para compilação
-RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
+# Instala o Ollama para IA local
+RUN curl -fsSL https://ollama.ai/install.sh | sh
+
 COPY smart_app.py .
 COPY smart_indexer.py .
+
+# Baixa um modelo padrão (ajustável via OLLAMA_MODEL)
+ENV OLLAMA_MODEL=llama2
 
 # Cria o diretório de documentos se não existir
 RUN mkdir -p /app/documents
@@ -20,5 +27,5 @@ ENV FLASK_APP=smart_app.py
 
 EXPOSE 5000
 
-# Comando para rodar a aplicação
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Comando para iniciar o Ollama e a aplicação
+CMD ["bash", "-c", "ollama serve & python -u smart_app.py"]
