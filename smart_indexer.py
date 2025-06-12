@@ -203,17 +203,32 @@ class SmartDocumentIndexer:
     def _answer_question(self, question, context_chunks):
         context = " ".join(context_chunks)[:3000]  # Aumenta o contexto para 3000 caracteres
         
-        # SEMPRE TENTA OLLAMA/MISTRAL PRIMEIRO
-        ollama_answer = self._answer_with_ollama(question, context)
-        if ollama_answer:
-            return ollama_answer
+        # SEMPRE TENTA OLLAMA/MISTRAL PRIMEIRO - MÚLTIPLAS TENTATIVAS
+        logger.info("===== INICIANDO BUSCA POR RESPOSTA =====")
+        logger.info(f"Pergunta: {question}")
+        logger.info(f"Tipo IA detectado: {getattr(self, 'llm_type', 'unknown')}")
+        
+        # Tenta Ollama até 3 vezes
+        for attempt in range(3):
+            logger.info(f"Tentativa {attempt + 1}/3 de usar Ollama/Mistral...")
+            ollama_answer = self._answer_with_ollama(question, context)
+            if ollama_answer:
+                logger.info("SUCESSO: Resposta gerada pelo Mistral!")
+                return ollama_answer
+            else:
+                logger.warning(f"Tentativa {attempt + 1} do Ollama falhou")
+        
+        logger.warning("FALHA: Ollama não respondeu após 3 tentativas")
         
         # Se Ollama falhar, tenta Hugging Face
         if hasattr(self, 'llm_type') and self.llm_type == "huggingface":
+            logger.info("Tentando Hugging Face como fallback...")
             hf_answer = self._answer_with_huggingface(question, context)
             if hf_answer:
+                logger.info("Resposta gerada pelo Hugging Face")
                 return hf_answer
         
+        logger.warning("FALLBACK: Usando sistema interno")
         # Retorna None para usar o sistema interno como fallback
         return None
 
@@ -221,27 +236,38 @@ class SmartDocumentIndexer:
         """Resposta usando Ollama/Mistral"""
         try:
             import requests
+            logger.info(">>> Tentando usar Ollama/Mistral para resposta...")
             
-            # Detecta automaticamente o modelo disponível se não estiver definido
-            if not hasattr(self, 'model_name'):
-                try:
-                    models_response = requests.get("http://localhost:11434/api/tags", timeout=2)
-                    if models_response.status_code == 200:
-                        models = models_response.json().get('models', [])
-                        self.model_name = models[0]['name'] if models else "mistral"
-                    else:
-                        self.model_name = "mistral"
-                except:
-                    self.model_name = "mistral"
+            # Verifica se o Ollama está rodando
+            try:
+                health_check = requests.get("http://localhost:11434/api/tags", timeout=5)
+                if health_check.status_code != 200:
+                    logger.error(">>> OLLAMA NÃO ESTÁ RODANDO! Execute: docker run -d -p 11434:11434 ollama/ollama")
+                    return None
+            except requests.exceptions.RequestException:
+                logger.error(">>> OLLAMA NÃO ESTÁ ACESSÍVEL! Verifique se está rodando na porta 11434")
+                return None
             
-            prompt = f"""Responda de forma natural e direta em português, baseado apenas no contexto fornecido. Se não encontrar a informação, diga que não encontrou.
+            # SEMPRE força o uso do Mistral
+            self.model_name = "mistral"
+            logger.info(f">>> Usando modelo forcado: {self.model_name}")
+            
+            prompt = f"""Com base EXCLUSIVAMENTE nos documentos fornecidos, responda em português de forma clara e objetiva.
 
-CONTEXTO: {context}
+IMPORTANTE: 
+- Use APENAS as informações dos documentos
+- NÃO invente ou adicione informações
+- Se a resposta não estiver nos documentos, diga: "Não encontrei essa informação nos documentos fornecidos"
+- Seja específico e cite detalhes como datas, nomes e valores quando disponíveis
+
+DOCUMENTOS:
+{context}
 
 PERGUNTA: {question}
 
-RESPOSTA:"""
+RESPOSTA (baseada apenas nos documentos):"""
 
+            logger.info(f">>> Enviando requisicao para Ollama com modelo: {self.model_name}")
             response = requests.post(
                 "http://localhost:11434/api/generate", 
                 json={
@@ -249,21 +275,34 @@ RESPOSTA:"""
                     "prompt": prompt, 
                     "stream": False,
                     "options": {
-                        "temperature": 0.3,
-                        "num_predict": 200,
-                        "top_p": 0.9
+                        "temperature": 0.3,  # Diminui criatividade
+                        "num_predict": 300,  # Respostas mais concisas
+                        "top_p": 0.8,
+                        "repeat_penalty": 1.1,
+                        "top_k": 20
                     }
                 }, 
                 timeout=30
             )
             
+            logger.info(f">>> Status da resposta Ollama: {response.status_code}")
             if response.status_code == 200:
-                answer = response.json().get('response', '').strip()
+                response_data = response.json()
+                answer = response_data.get('response', '').strip()
+                logger.info(f">>> Resposta do Mistral recebida: {len(answer)} caracteres")
+                logger.info(f">>> Conteúdo da resposta: {answer[:100]}...")
+                
                 if answer and len(answer) > 10:  # Garante resposta mínima
+                    logger.info(">>> RETORNANDO RESPOSTA DO MISTRAL!")
                     return {'answer': answer, 'confidence': 0.95}
+                else:
+                    logger.warning(">>> Resposta do Mistral muito curta ou vazia")
+            else:
+                logger.error(f">>> Erro HTTP do Ollama: {response.status_code} - {response.text}")
                     
         except Exception as e:
-            logger.error(f"Erro no Ollama: {e}")
+            logger.error(f">>> ERRO NO OLLAMA: {e}")
+            logger.error(f">>> Tipo do erro: {type(e).__name__}")
         
         return None
 

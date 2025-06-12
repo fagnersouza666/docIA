@@ -2,6 +2,22 @@
 
 Todas as mudanças importantes do projeto serão documentadas aqui.
 
+## [2.2.0] - 2024-12-19 18:30
+
+### ✨ Melhorias no Mistral
+
+- **Prompt otimizado**: Prompt mais direto e eficaz para respostas detalhadas
+- **Parâmetros ajustados**: Temperature 0.8, tokens 500, top_k 40 para melhor qualidade
+- **Dockerfile corrigido**: Script de inicialização que garante Ollama + Mistral funcionando
+- **Logs limpos**: Removidos emojis para compatibilidade com terminal Windows
+- **Força Mistral**: Modelo obrigatório, sem detecção automática
+
+### 🔧 Correções Técnicas
+
+- Corrigido problema de inicialização do Ollama no container
+- Melhorado script start.sh com sequência de carregamento adequada
+- Removidos problemas de encoding nos logs
+
 ## [2.1.0] - 2025-06-12
 
 ### 🎯 MODELO MISTRAL COMO PADRÃO OBRIGATÓRIO

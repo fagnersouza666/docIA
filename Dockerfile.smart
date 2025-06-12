@@ -8,16 +8,11 @@ RUN apt-get update && apt-get install -y gcc g++ curl && rm -rf /var/lib/apt/lis
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-
 # Instala o Ollama para IA local
 RUN curl -fsSL https://ollama.ai/install.sh | sh
 
 COPY smart_app.py .
 COPY smart_indexer.py .
-
-# Baixa o modelo Mistral 7B por padrão (ajustável via OLLAMA_MODEL)
-ENV OLLAMA_MODEL=mistral
-RUN ollama pull ${OLLAMA_MODEL} || true
 
 # Cria o diretório de documentos se não existir
 RUN mkdir -p /app/documents
@@ -25,8 +20,23 @@ RUN mkdir -p /app/documents
 ENV PYTHONUNBUFFERED=1
 ENV TRANSFORMERS_CACHE=/app/.cache
 ENV FLASK_APP=smart_app.py
+ENV OLLAMA_MODEL=mistral
 
 EXPOSE 5000
 
-# Comando para iniciar o Ollama e a aplicação
-CMD ["bash", "-c", "ollama serve & python -u smart_app.py"]
+# Script de inicialização que garante que o Ollama funcione
+RUN echo '#!/bin/bash\n\
+    echo "Iniciando Ollama service..."\n\
+    ollama serve &\n\
+    OLLAMA_PID=$!\n\
+    \n\
+    echo "Aguardando Ollama inicializar..."\n\
+    sleep 10\n\
+    \n\
+    echo "Baixando modelo Mistral..."\n\
+    ollama pull mistral\n\
+    \n\
+    echo "Modelo carregado, iniciando aplicacao..."\n\
+    python -u smart_app.py' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

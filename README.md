@@ -180,11 +180,15 @@ docIA/
 2. Clique em "Reindexar" na interface
 3. Verifique os logs no terminal
 
-## 📈 Versão Atual
+## 📊 Versão Atual
 
-**v2.1.0** - Modelo Mistral como padrão obrigatório
+**v2.2.0** - Mistral Otimizado
 
-### Principais Melhorias desta Versão
+- Prompt melhorado para respostas mais detalhadas
+- Configurações de temperatura e tokens otimizadas
+- Dockerfile corrigido para garantir inicialização do Ollama
+- Logs simplificados sem emojis para compatibilidade
+- Força uso do Mistral como modelo obrigatório
 
 - ✅ Modelo Mistral configurado como padrão
 - ✅ Priorização automática do Ollama+Mistral
