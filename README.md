@@ -5,7 +5,7 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
 ## ✨ Recursos Principais
 
 - **Busca Semântica** – Encontre informações pelo significado do texto, não apenas por palavras-chave.
-- **IA Generativa Local** – Usa o Ollama para gerar respostas de forma privada, sem enviar seus dados para a nuvem.
+- **IA Generativa Local** – Usa o Ollama (preferencialmente com o modelo **Mistral 7B**) para gerar respostas de forma privada, sem enviar seus dados para a nuvem.
 - **Reindexação Automática** – Novos arquivos adicionados à pasta `documents/` são processados e indexados em tempo real.
 - **Suporte Multi‑Formato** – Aceita documentos em PDF, DOCX e TXT.
 - **Deploy Simplificado** – Projeto containerizado com Docker para execução rápida em qualquer ambiente.
@@ -15,7 +15,7 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
 ### Pré‑requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
-- (Opcional) [Ollama](https://github.com/ollama/ollama) configurado para respostas de IA com maior qualidade
+- (Opcional) [Ollama](https://github.com/ollama/ollama) com o modelo **Mistral 7B** (baixado automaticamente se necessário) para respostas de IA com maior qualidade
 
 ### Passo a Passo
 
@@ -37,6 +37,8 @@ O **docIA** é uma aplicação para busca e análise de documentos que utiliza I
    ```
 
    O serviço irá iniciar e indexar os documentos encontrados automaticamente.
+
+   Se o Ollama estiver disponível, o sistema verifica se o modelo **Mistral 7B** já foi baixado e faz o download automático se necessário. Caso o Ollama não esteja em execução, o modelo será carregado via Hugging Face (requer mais recursos).
 
 4. **Acesse a interface**
 
