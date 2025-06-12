@@ -15,8 +15,9 @@ RUN curl -fsSL https://ollama.ai/install.sh | sh
 COPY smart_app.py .
 COPY smart_indexer.py .
 
-# Baixa um modelo padrão (ajustável via OLLAMA_MODEL)
-ENV OLLAMA_MODEL=llama2
+# Baixa o modelo Mistral 7B por padrão (ajustável via OLLAMA_MODEL)
+ENV OLLAMA_MODEL=mistral
+RUN ollama pull ${OLLAMA_MODEL} || true
 
 # Cria o diretório de documentos se não existir
 RUN mkdir -p /app/documents
