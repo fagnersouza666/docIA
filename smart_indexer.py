@@ -34,25 +34,57 @@ class SmartDocumentIndexer:
         """Inicializa modelo de linguagem generativo para respostas naturais"""
         try:
             logger.info("Inicializando modelo de linguagem generativo...")
-            # Tentar usar Ollama local
+            # Tentar usar Ollama local com preferência pelo modelo Mistral
             try:
                 import requests
-                if requests.get("http://localhost:11434/api/tags", timeout=2).status_code == 200:
-                    models = requests.get("http://localhost:11434/api/tags").json().get('models', [])
-                    if models:
-                        self.llm_type = "ollama"
+                response = requests.get("http://localhost:11434/api/tags", timeout=2)
+                models = []
+                if response.status_code == 200:
+                    models = response.json().get('models', [])
+                    names = [m.get('name', '').lower() for m in models]
+                    if not any('mistral' in n for n in names):
+                        try:
+                            pull_resp = requests.post(
+                                "http://localhost:11434/api/pull",
+                                json={"model": "mistral", "stream": False},
+                                timeout=30
+                            )
+                            if pull_resp.status_code == 200:
+                                logger.info("Modelo Mistral baixado via Ollama")
+                                response = requests.get("http://localhost:11434/api/tags", timeout=2)
+                                if response.status_code == 200:
+                                    models = response.json().get('models', [])
+                        except Exception as e:
+                            logger.error(f"Erro ao baixar modelo no Ollama: {e}")
+                if models:
+                    self.llm_type = "ollama"
+                    self.model_name = None
+                    for m in models:
+                        name = m.get('name', '').lower()
+                        if 'mistral' in name:
+                            self.model_name = m['name']
+                            break
+                    if not self.model_name:
                         self.model_name = models[0]['name']
-                        logger.info(f"✅ Ollama detectado com modelo: {self.model_name}")
-                        return
-            except: pass
+                    logger.info(f"✅ Ollama detectado com modelo: {self.model_name}")
+                    return
+            except Exception as e:
+                logger.error(f"Erro ao verificar Ollama: {e}")
             # Fallback para Hugging Face
             try:
                 from transformers import pipeline
-                self.qa_pipeline = pipeline("text-generation", model="microsoft/DialoGPT-medium", device=-1)
+                import torch
+                device = 0 if torch.cuda.is_available() else -1
+                self.qa_pipeline = pipeline(
+                    "text-generation",
+                    model="mistralai/Mistral-7B-Instruct-v0.2",
+                    device=device
+                )
                 self.llm_type = "huggingface"
-                logger.info("✅ Modelo Hugging Face generativo carregado")
+                logger.info("✅ Modelo Hugging Face Mistral-7B carregado")
                 return
-            except: pass
+            except Exception as e:
+                logger.error(f"Erro ao carregar modelo Hugging Face: {e}")
             logger.warning("Usando modo de resposta baseado em contexto (fallback)")
             self.qa_pipeline = None
             self.llm_type = "simple"
