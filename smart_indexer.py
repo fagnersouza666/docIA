@@ -5,7 +5,6 @@ import PyPDF2
 from docx import Document
 import logging
 import re
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import warnings
@@ -20,6 +19,7 @@ class SmartDocumentIndexer:
     def __init__(self):
         self.documents = []
         self.index_file = "smart_documents_index.json"
+        self.last_update = None
         self.vectorizer = TfidfVectorizer(
             stop_words=self._get_portuguese_stop_words(),
             max_features=5000,
@@ -86,6 +86,7 @@ class SmartDocumentIndexer:
         if self.documents:
             self._vectorize_documents()
         self.save_index()
+        self.last_update = datetime.now().isoformat()
         logger.info(f"Indexação concluída. {len(self.documents)} documentos processados.")
 
     def _chunk_text(self, text, chunk_size=1000, overlap=200):
@@ -114,6 +115,7 @@ class SmartDocumentIndexer:
             with open(self.index_file, 'r', encoding='utf-8') as f:
                 self.documents = json.load(f)
             if self.documents:
+                self.last_update = max(d.get("indexed_at") for d in self.documents)
                 self._vectorize_documents()
             logger.info(f"Índice carregado: {len(self.documents)} documentos.")
 
@@ -207,7 +209,7 @@ RESPOSTA:"""
         try:
             with open(file_path, 'rb') as f:
                 reader = PyPDF2.PdfReader(f)
-                return "".join(page.extract_text() for page in reader.pages)
+                return "".join((page.extract_text() or "") for page in reader.pages)
         except Exception as e: logger.error(f"Erro ao ler PDF {file_path}: {e}"); return ""
 
     def _read_docx(self, file_path):
@@ -225,4 +227,8 @@ RESPOSTA:"""
         return ["a", "o", "as", "os", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas", "com", "por", "para", "e", "ou", "mas", "se", "que", "qual", "quando", "como", "onde", "quem", "um", "uma", "uns", "umas"]
         
     def get_stats(self):
-        return {'total_documents': len(self.documents), 'last_update': datetime.now().isoformat(), 'has_ai_model': self.qa_pipeline is not None or hasattr(self, 'llm_type') and self.llm_type == 'ollama'}
+        return {
+            'total_documents': len(self.documents),
+            'last_update': self.last_update,
+            'has_ai_model': self.qa_pipeline is not None or getattr(self, 'llm_type', '') == 'ollama'
+        }
