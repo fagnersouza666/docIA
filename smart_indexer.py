@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 import string
+import threading
 
 warnings.filterwarnings("ignore")
 
@@ -24,12 +25,15 @@ class SmartDocumentIndexer:
         self.vectorizer = TfidfVectorizer(
             stop_words=self._get_portuguese_stop_words(),
             max_features=5000,
-            ngram_range=(1, 3)
+            ngram_range=(1, 3),
+            min_df=1,
+            max_df=0.8
         )
         self.document_vectors = None
         self.qa_pipeline = None
         self._init_qa_model()
         self.load_index()
+        self._indexing_lock = threading.Lock()  # Lock para evitar concorrência
 
     def _init_qa_model(self):
         """Inicializa modelo de IA externo (prioriza Ollama)"""
@@ -84,31 +88,32 @@ class SmartDocumentIndexer:
 
     def index_directory(self, directory_path):
         """Indexa todos os documentos de um diretório"""
-        logger.info(f"Iniciando indexação do diretório: {directory_path}")
-        self.documents = []
-        for filename in os.listdir(directory_path):
-            file_path = os.path.join(directory_path, filename)
-            content = ""
-            if filename.endswith(".pdf"):
-                content = self._read_pdf(file_path)
-            elif filename.endswith(".docx"):
-                content = self._read_docx(file_path)
-            elif filename.endswith(".txt"):
-                content = self._read_txt(file_path)
-            
-            if content:
-                doc_id = len(self.documents) + 1
-                chunks = self._chunk_text(content)
-                doc = {
-                    'id': doc_id, 'filename': filename, 'content': content, 
-                    'chunks': chunks, 'file_path': file_path, 'indexed_at': datetime.now().isoformat()
-                }
-                self.documents.append(doc)
-        if self.documents:
-            self._vectorize_documents()
-        self.save_index()
-        self.last_update = datetime.now().isoformat()
-        logger.info(f"Indexação concluída. {len(self.documents)} documentos processados.")
+        with self._indexing_lock:  # Evita concorrência durante indexação
+            logger.info(f"Iniciando indexação do diretório: {directory_path}")
+            self.documents = []
+            for filename in os.listdir(directory_path):
+                file_path = os.path.join(directory_path, filename)
+                content = ""
+                if filename.endswith(".pdf"):
+                    content = self._read_pdf(file_path)
+                elif filename.endswith(".docx"):
+                    content = self._read_docx(file_path)
+                elif filename.endswith(".txt"):
+                    content = self._read_txt(file_path)
+                
+                if content:
+                    doc_id = len(self.documents) + 1
+                    chunks = self._chunk_text(content)
+                    doc = {
+                        'id': doc_id, 'filename': filename, 'content': content, 
+                        'chunks': chunks, 'file_path': file_path, 'indexed_at': datetime.now().isoformat()
+                    }
+                    self.documents.append(doc)
+            if self.documents:
+                self._vectorize_documents()
+            self.save_index()
+            self.last_update = datetime.now().isoformat()
+            logger.info(f"Indexação concluída. {len(self.documents)} documentos processados.")
 
     def _chunk_text(self, text, chunk_size=2000, overlap=400):
         """Divide o texto em chunks com sobreposição"""
