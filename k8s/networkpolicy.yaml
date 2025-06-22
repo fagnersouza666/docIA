@@ -1,0 +1,101 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: doc-ia-network-policy
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "Network policy for DocIA application security"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: doc-ia
+      app.kubernetes.io/component: application
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+      ports:
+        - protocol: TCP
+          port: 5000
+    # Allow traffic from same namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: doc-ia
+      ports:
+        - protocol: TCP
+          port: 5000
+        - protocol: TCP
+          port: 8080
+    # Allow monitoring traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS outbound for AI models/updates
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow HTTP for health checks and APIs
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow communication within namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: doc-ia
+      ports:
+        - protocol: TCP
+          port: 5000
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: doc-ia-deny-all
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "Default deny all network policy for doc-ia namespace"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

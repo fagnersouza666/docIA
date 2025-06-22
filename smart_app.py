@@ -6,6 +6,8 @@ import logging
 import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import requests
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -87,7 +89,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <h1>Busca Inteligente de Atas</h1>
+        <h1>Fala que te escuto</h1>
         <div id="stats" class="stats">Carregando...</div>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="Faça uma pergunta sobre as atas...">
@@ -178,8 +180,109 @@ def stats_endpoint():
     stats_data = indexer.get_stats()
     return jsonify({'success': True, **stats_data})
 
+@app.route('/health')
+def health():
+    """Health check endpoint for Kubernetes liveness probe"""
+    try:
+        # Verificar se o indexador está funcionando
+        if hasattr(indexer, 'search_documents'):
+            return jsonify({
+                'status': 'healthy',
+                'timestamp': datetime.now().isoformat(),
+                'version': '2.3.0',
+                'ollama_status': _check_ollama_status()
+            }), 200
+        else:
+            return jsonify({
+                'status': 'unhealthy',
+                'error': 'Indexer not initialized'
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 503
+
+@app.route('/ready')
+def ready():
+    """Readiness check endpoint for Kubernetes readiness probe"""
+    try:
+        # Verificar se a aplicação está pronta para receber tráfego
+        if os.path.exists('documents'):
+            return jsonify({
+                'status': 'ready',
+                'timestamp': datetime.now().isoformat(),
+                'documents_indexed': len(getattr(indexer, 'documents', [])),
+                'ollama_available': _check_ollama_available()
+            }), 200
+        else:
+            return jsonify({
+                'status': 'not_ready',
+                'error': 'Documents directory not found'
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'status': 'not_ready',
+            'error': str(e)
+        }), 503
+
+@app.route('/startup')
+def startup():
+    """Startup check endpoint for Kubernetes startup probe"""
+    try:
+        # Verificar se a aplicação completou a inicialização
+        startup_complete = (
+            hasattr(indexer, 'search_documents') and
+            os.path.exists('documents') and
+            app.config.get('STARTUP_COMPLETE', False)
+        )
+        
+        if startup_complete:
+            return jsonify({
+                'status': 'started',
+                'timestamp': datetime.now().isoformat()
+            }), 200
+        else:
+            return jsonify({
+                'status': 'starting',
+                'message': 'Application is still starting up'
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'status': 'startup_failed',
+            'error': str(e)
+        }), 503
+
+def _check_ollama_status():
+    """Verificar status detalhado do Ollama"""
+    try:
+        response = requests.get('http://localhost:11434/api/tags', timeout=2)
+        if response.status_code == 200:
+            tags = response.json()
+            models = [model['name'] for model in tags.get('models', [])]
+            return {
+                'available': True,
+                'models': models,
+                'mistral_available': any('mistral' in model.lower() for model in models)
+            }
+    except:
+        pass
+    return {'available': False}
+
+def _check_ollama_available():
+    """Verificar se Ollama está disponível (simpler check)"""
+    try:
+        response = requests.get('http://localhost:11434/api/tags', timeout=2)
+        return response.status_code == 200
+    except:
+        return False
+
 if __name__ == '__main__':
     if not os.path.exists("documents"): os.makedirs("documents")
     indexer.index_directory("documents")
     start_watcher()
+    
+    # Marcar inicialização como completa para health checks
+    app.config['STARTUP_COMPLETE'] = True
+    
     app.run(host='0.0.0.0', port=5000)
