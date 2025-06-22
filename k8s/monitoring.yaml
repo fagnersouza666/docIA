@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: doc-ia-service-monitor
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "ServiceMonitor for DocIA application metrics"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doc-ia
+      app.kubernetes.io/component: service
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+      honorLabels: true
+      scrapeTimeout: 10s
+    - port: http
+      interval: 60s
+      path: /health
+      scheme: http
+      honorLabels: true
+      scrapeTimeout: 5s
+  namespaceSelector:
+    matchNames:
+      - doc-ia
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: doc-ia-dashboard
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+    grafana_dashboard: "true"
+  annotations:
+    description: "Grafana dashboard for DocIA monitoring"
+    grafana.com/dashboard-folder: "DocIA"
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "DocIA - Document Search System",
+        "tags": ["doc-ia", "ai", "documents"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Request Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"doc-ia\"}[5m])",
+                "legendFormat": "Requests/sec"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "title": "Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"doc-ia\"}[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Error Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"doc-ia\",status=~\"5..\"}[5m])",
+                "legendFormat": "Error Rate"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Active Documents",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "doc_ia_documents_indexed_total",
+                "legendFormat": "Documents"
+              }
+            ]
+          }
+        ]
+      }
+    }
+---
+apiVersion: logging.coreos.com/v1
+kind: ClusterLogForwarder
+metadata:
+  name: doc-ia-log-forwarder
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: logging
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "Log forwarder for DocIA application logs"
+spec:
+  inputs:
+    - name: doc-ia-logs
+      application:
+        namespaces:
+          - doc-ia
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: doc-ia
+  outputs:
+    - name: elasticsearch-output
+      type: elasticsearch
+      url: "https://elasticsearch.logging.svc.cluster.local:9200"
+      elasticsearch:
+        index: "doc-ia-logs-{+YYYY.MM.dd}"
+    - name: fluentd-output
+      type: fluentd
+      url: "tcp://fluentd.logging.svc.cluster.local:24224"
+  pipelines:
+    - name: doc-ia-pipeline
+      inputRefs:
+        - doc-ia-logs
+      outputRefs:
+        - elasticsearch-output
+        - fluentd-output
+      labels:
+        app: "doc-ia"
+        environment: "production"

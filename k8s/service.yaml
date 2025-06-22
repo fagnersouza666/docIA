@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-ia-service
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+    service.kubernetes.io/type: clusterip
+  annotations:
+    description: "ClusterIP service for internal communication"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    prometheus.io/probe: "true"
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 # 3 hours
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      protocol: TCP
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-ia-nodeport
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+    service.kubernetes.io/type: nodeport
+  annotations:
+    description: "NodePort service for external access"
+    service.beta.kubernetes.io/external-traffic: "OnlyLocal"
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 # 3 hours
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      nodePort: 30500
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doc-ia-headless
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+    service.kubernetes.io/type: headless
+  annotations:
+    description: "Headless service for direct pod access"
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: application

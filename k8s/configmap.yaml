@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: doc-ia-config
+  namespace: doc-ia
+  labels:
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "Configuration for DocIA application"
+    config.kubernetes.io/local-config: "true"
+data:
+  # Flask Configuration
+  FLASK_ENV: "production"
+  FLASK_APP: "smart_app.py"
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "random"
+
+  # AI/ML Configuration
+  TRANSFORMERS_CACHE: "/app/.cache"
+  OLLAMA_MODEL: "mistral"
+  OLLAMA_HOST: "http://localhost:11434"
+
+  # Application Configuration
+  MAX_CONTENT_LENGTH: "52428800" # 50MB
+  UPLOAD_FOLDER: "/app/documents"
+  ALLOWED_EXTENSIONS: "pdf,docx,txt"
+
+  # Performance Configuration
+  WORKERS: "1"
+  MAX_WORKERS: "4"
+  TIMEOUT: "300"
+
+  # Logging Configuration
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

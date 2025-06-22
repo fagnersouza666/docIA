@@ -54,7 +54,27 @@ Sistema avançado de busca e análise de documentos com IA, oferecendo respostas
    python smart_app.py
    ```
 
-### Opção 2: Execução com Docker
+### Opção 2: Execução com Kubernetes (Produção)
+
+1. **Deploy no Kubernetes:**
+
+   ```bash
+   # Windows
+   deploy-k8s.bat
+   
+   # Linux/Mac
+   ./deploy-k8s.sh
+   ```
+
+   O script automaticamente:
+   - Constrói a imagem Docker
+   - Cria namespace e recursos do K8s
+   - Configura volumes persistentes
+   - Expõe a aplicação na porta 30500
+
+2. **Acesse**: <http://localhost:30500>
+
+### Opção 3: Execução com Docker Compose
 
 1. **Execute com Docker Compose:**
 
@@ -119,6 +139,151 @@ TRANSFORMERS_CACHE=/app/.cache # Cache dos modelos
 - **Número de resultados**: Ajuste `max_results` nas buscas
 - **Threshold de similaridade**: Configure em `_semantic_search`
 
+## ☸️ Kubernetes - Enterprise Edition
+
+### Deploy Rápido com Makefile
+
+```bash
+# Ver todos os comandos disponíveis
+make help
+
+# Build e deploy completo
+make build && make deploy
+
+# Deploy rápido (sem build)
+make quick-deploy
+
+# Verificar status
+make status
+
+# Ver logs
+make logs
+```
+
+### Deploy Manual
+
+#### Windows
+
+```bash
+# Setup do cluster (se necessário)
+setup-remote-k8s.bat
+
+# Deploy completo com interface interativa
+deploy\deploy.bat
+```
+
+#### Linux/Mac
+
+```bash
+# Setup do cluster (se necessário)
+chmod +x setup-remote.sh && ./setup-remote.sh
+
+# Deploy completo com interface interativa
+chmod +x deploy/deploy.sh && ./deploy/deploy.sh
+```
+
+### Recursos Enterprise
+
+#### Segurança
+
+- **RBAC**: Service accounts com permissions mínimas
+- **Security Context**: Execução não-root
+- **Network Policies**: Isolamento de rede
+- **Secrets**: Gerenciamento seguro de credenciais
+
+#### Observabilidade
+
+- **Health Checks**: Liveness, Readiness e Startup probes
+- **Metrics**: Prometheus integration
+- **Logging**: Structured logs com forwarding
+- **Monitoring**: Grafana dashboards
+
+#### Escalabilidade
+
+- **HPA**: Auto-scaling baseado em CPU/memória
+- **Resource Management**: Limits e requests configurados
+- **Rolling Updates**: Zero-downtime deployments
+- **Multiple Environments**: Dev, Staging, Produção
+
+### Configurações por Ambiente
+
+| Ambiente | Replicas | CPU Request | Memory Request | Storage Class |
+|----------|----------|-------------|----------------|---------------|
+| Development | 1 | 500m | 1Gi | standard |
+| Staging | 2 | 1000m | 2Gi | fast-ssd |
+| Production | 3 | 2000m | 4Gi | fast-ssd |
+
+### Recursos Provisionados
+
+- **Namespace**: doc-ia com labels padronizadas
+- **Deployment**: Multi-replica com rolling updates
+- **Services**: ClusterIP, NodePort e Headless
+- **PVCs**: Documentos (20Gi), Cache (10Gi), Logs (5Gi)
+- **Ingress**: nginx com SSL/TLS e rate limiting
+- **ConfigMap**: Configuração estruturada
+- **Secrets**: Credenciais criptografadas
+- **RBAC**: Service accounts com permissions mínimas
+- **HPA**: Auto-scaling configurado
+- **Network Policies**: Segurança de rede
+- **Monitoring**: ServiceMonitor e dashboards
+
+### Comandos de Gerenciamento
+
+```bash
+# Escalabilidade
+make scale REPLICAS=5
+
+# Atualização
+make update
+
+# Backup
+make backup
+
+# Restauração
+make restore BACKUP_FILE=backup/file.yaml
+
+# Debug
+make debug
+
+# Limpeza
+make clean
+
+# Deletar tudo
+make delete
+```
+
+### Monitoramento
+
+```bash
+# Health check completo
+make health
+
+# Monitorar recursos
+make monitor
+
+# Ver eventos
+make events
+
+# Testar conectividade
+make test
+```
+
+### Troubleshooting
+
+```bash
+# Logs detalhados
+make logs-tail
+
+# Conectar ao pod
+make dev-shell
+
+# Descrever deployment
+make describe
+
+# Testar rede
+make network-test
+```
+
 ## 🐳 Detalhes do Docker
 
 O `Dockerfile.smart` inclui:
@@ -136,7 +301,10 @@ docIA/
 ├── smart_indexer.py       # Motor de busca e IA
 ├── documents/             # Pasta dos documentos
 ├── Dockerfile.smart       # Container com Ollama+Mistral
-├── docker-compose.yml     # Orquestração completa
+├── docker-compose.yml     # Orquestração Docker
+├── k8s-*.yaml            # Manifests do Kubernetes
+├── deploy-k8s.sh         # Script de deploy K8s (Linux/Mac)
+├── deploy-k8s.bat        # Script de deploy K8s (Windows)
 ├── requirements.txt       # Dependências Python
 └── README.md             # Este arquivo
 ```
@@ -180,17 +348,34 @@ docIA/
 2. Clique em "Reindexar" na interface
 3. Verifique os logs no terminal
 
-## 📈 Versão Atual
+## 📊 Versão Atual
 
-**v2.1.0** - Modelo Mistral como padrão obrigatório
+**v2.3.0** - Enterprise Kubernetes Edition
 
-### Principais Melhorias desta Versão
+- **🔒 Segurança Enterprise**: RBAC, Security Context, Network Policies, Secrets Management
+- **📊 Observabilidade**: Health checks avançados, Prometheus metrics, Grafana dashboards
+- **⚡ Escalabilidade**: HPA com auto-scaling, Resource management otimizado
+- **🔄 Rolling Updates**: Zero-downtime deployments com múltiplos ambientes
+- **💾 Storage Avançado**: Volumes persistentes com backup strategy configurado
+- **🛠️ DevOps Ready**: Makefile com 25+ comandos, Scripts de deploy interativos
+- **🌐 Multi-Ambiente**: Configurações específicas para Dev, Staging e Produção
+- **🔍 Monitoring**: ServiceMonitor, Log forwarding, Network policies de segurança
 
-- ✅ Modelo Mistral configurado como padrão
-- ✅ Priorização automática do Ollama+Mistral
-- ✅ Fallback inteligente se IA não estiver disponível
-- ✅ Interface atualizada com status do modelo
-- ✅ Docker otimizado com Mistral pré-configurado
+### Funcionalidades Enterprise Adicionadas
+
+- ✅ RBAC com service accounts seguros
+- ✅ Security contexts não-root
+- ✅ Network policies para isolamento
+- ✅ Secrets para dados sensíveis
+- ✅ HPA com auto-scaling inteligente
+- ✅ Health checks robustos (liveness, readiness, startup)
+- ✅ Prometheus + Grafana integration
+- ✅ Volumes com backup automatizado
+- ✅ Scripts de deploy interativos (Windows/Linux)
+- ✅ Makefile com comandos de gerenciamento
+- ✅ Configurações por ambiente (dev/staging/prod)
+- ✅ TLS/SSL com cert-manager
+- ✅ Rate limiting no Ingress
 
 ---
 

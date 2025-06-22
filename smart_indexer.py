@@ -203,45 +203,71 @@ class SmartDocumentIndexer:
     def _answer_question(self, question, context_chunks):
         context = " ".join(context_chunks)[:3000]  # Aumenta o contexto para 3000 caracteres
         
-        # SEMPRE TENTA OLLAMA/MISTRAL PRIMEIRO
-        ollama_answer = self._answer_with_ollama(question, context)
-        if ollama_answer:
-            return ollama_answer
+        # SEMPRE TENTA OLLAMA/MISTRAL PRIMEIRO - MÚLTIPLAS TENTATIVAS
+        logger.info("===== INICIANDO BUSCA POR RESPOSTA =====")
+        logger.info(f"Pergunta: {question}")
+        logger.info(f"Tipo IA detectado: {getattr(self, 'llm_type', 'unknown')}")
+        
+        # Tenta Ollama até 3 vezes
+        for attempt in range(3):
+            logger.info(f"Tentativa {attempt + 1}/3 de usar Ollama/Mistral...")
+            ollama_answer = self._answer_with_ollama(question, context)
+            if ollama_answer:
+                logger.info("SUCESSO: Resposta gerada pelo Mistral!")
+                return ollama_answer
+            else:
+                logger.warning(f"Tentativa {attempt + 1} do Ollama falhou")
+        
+        logger.warning("FALHA: Ollama não respondeu após 3 tentativas")
         
         # Se Ollama falhar, tenta Hugging Face
         if hasattr(self, 'llm_type') and self.llm_type == "huggingface":
+            logger.info("Tentando Hugging Face como fallback...")
             hf_answer = self._answer_with_huggingface(question, context)
             if hf_answer:
+                logger.info("Resposta gerada pelo Hugging Face")
                 return hf_answer
         
-        # Retorna None para usar o sistema interno como fallback
-        return None
+        logger.warning("FALLBACK: Usando sistema aprimorado")
+        # Usa sistema aprimorado que cria respostas mais inteligentes
+        return self._answer_with_enhanced_system(question, context)
 
     def _answer_with_ollama(self, question, context):
         """Resposta usando Ollama/Mistral"""
         try:
             import requests
+            logger.info(">>> Tentando usar Ollama/Mistral para resposta...")
             
-            # Detecta automaticamente o modelo disponível se não estiver definido
-            if not hasattr(self, 'model_name'):
-                try:
-                    models_response = requests.get("http://localhost:11434/api/tags", timeout=2)
-                    if models_response.status_code == 200:
-                        models = models_response.json().get('models', [])
-                        self.model_name = models[0]['name'] if models else "mistral"
-                    else:
-                        self.model_name = "mistral"
-                except:
-                    self.model_name = "mistral"
+            # Verifica se o Ollama está rodando
+            try:
+                health_check = requests.get("http://localhost:11434/api/tags", timeout=5)
+                if health_check.status_code != 200:
+                    logger.error(">>> OLLAMA NÃO ESTÁ RODANDO! Execute: docker run -d -p 11434:11434 ollama/ollama")
+                    return None
+            except requests.exceptions.RequestException:
+                logger.error(">>> OLLAMA NÃO ESTÁ ACESSÍVEL! Verifique se está rodando na porta 11434")
+                return None
             
-            prompt = f"""Responda de forma natural e direta em português, baseado apenas no contexto fornecido. Se não encontrar a informação, diga que não encontrou.
+            # SEMPRE força o uso do Mistral
+            self.model_name = "mistral"
+            logger.info(f">>> Usando modelo forcado: {self.model_name}")
+            
+            prompt = f"""Com base EXCLUSIVAMENTE nos documentos fornecidos, responda em português de forma clara e objetiva.
 
-CONTEXTO: {context}
+IMPORTANTE: 
+- Use APENAS as informações dos documentos
+- NÃO invente ou adicione informações
+- Se a resposta não estiver nos documentos, diga: "Não encontrei essa informação nos documentos fornecidos"
+- Seja específico e cite detalhes como datas, nomes e valores quando disponíveis
+
+DOCUMENTOS:
+{context}
 
 PERGUNTA: {question}
 
-RESPOSTA:"""
+RESPOSTA (baseada apenas nos documentos):"""
 
+            logger.info(f">>> Enviando requisicao para Ollama com modelo: {self.model_name}")
             response = requests.post(
                 "http://localhost:11434/api/generate", 
                 json={
@@ -249,21 +275,34 @@ RESPOSTA:"""
                     "prompt": prompt, 
                     "stream": False,
                     "options": {
-                        "temperature": 0.3,
-                        "num_predict": 200,
-                        "top_p": 0.9
+                        "temperature": 0.3,  # Diminui criatividade
+                        "num_predict": 300,  # Respostas mais concisas
+                        "top_p": 0.8,
+                        "repeat_penalty": 1.1,
+                        "top_k": 20
                     }
                 }, 
-                timeout=30
+                timeout=120  # Aumenta timeout para 2 minutos
             )
             
+            logger.info(f">>> Status da resposta Ollama: {response.status_code}")
             if response.status_code == 200:
-                answer = response.json().get('response', '').strip()
+                response_data = response.json()
+                answer = response_data.get('response', '').strip()
+                logger.info(f">>> Resposta do Mistral recebida: {len(answer)} caracteres")
+                logger.info(f">>> Conteúdo da resposta: {answer[:100]}...")
+                
                 if answer and len(answer) > 10:  # Garante resposta mínima
+                    logger.info(">>> RETORNANDO RESPOSTA DO MISTRAL!")
                     return {'answer': answer, 'confidence': 0.95}
+                else:
+                    logger.warning(">>> Resposta do Mistral muito curta ou vazia")
+            else:
+                logger.error(f">>> Erro HTTP do Ollama: {response.status_code} - {response.text}")
                     
         except Exception as e:
-            logger.error(f"Erro no Ollama: {e}")
+            logger.error(f">>> ERRO NO OLLAMA: {e}")
+            logger.error(f">>> Tipo do erro: {type(e).__name__}")
         
         return None
 
@@ -449,6 +488,97 @@ RESPOSTA:"""
         
     def _get_portuguese_stop_words(self):
         return ["a", "o", "as", "os", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas", "com", "por", "para", "e", "ou", "mas", "se", "que", "qual", "quando", "como", "onde", "quem", "um", "uma", "uns", "umas"]
+
+    def _answer_with_enhanced_system(self, question, context):
+        """Sistema aprimorado que cria respostas mais inteligentes"""
+        try:
+            logger.info(">>> Usando sistema aprimorado para gerar resposta...")
+            
+            # Analisa o contexto para extrair informações relevantes
+            context_lines = [line.strip() for line in context.split('\n') if line.strip()]
+            relevant_info = []
+            
+            # Palavras-chave da pergunta (remove palavras pequenas)
+            question_words = set([word.lower() for word in question.split() if len(word) > 3])
+            
+            # Busca linhas que contêm palavras-chave da pergunta
+            for line in context_lines:
+                line_lower = line.lower()
+                if any(word in line_lower for word in question_words):
+                    relevant_info.append(line)
+            
+            if not relevant_info:
+                relevant_info = context_lines[:3]  # Pega as primeiras 3 linhas se não encontrar nada específico
+            
+            # Cria uma resposta estruturada baseada no tipo de pergunta
+            response = ""
+            
+            if any(word in question.lower() for word in ["quando", "data", "dia", "período"]):
+                # Busca por datas
+                import re
+                dates = re.findall(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b\d{4}\b', context)
+                months = re.findall(r'janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro', context, re.IGNORECASE)
+                
+                if dates:
+                    response = f"Segundo os documentos, as datas identificadas são: {', '.join(set(dates[:3]))}. "
+                elif months:
+                    response = f"De acordo com os registros, isso ocorreu em: {', '.join(set(months[:2]))}. "
+                else:
+                    response = "Com base nos documentos analisados, "
+                    
+            elif any(word in question.lower() for word in ["quanto", "valor", "preço", "orçamento", "custo"]):
+                # Busca por valores
+                import re
+                values = re.findall(r'R\$\s*[\d.,]+|\$\s*[\d.,]+|\d+%|\d+\s*milhões?|\d+\s*bilhões?', context, re.IGNORECASE)
+                
+                if values:
+                    response = f"Os valores identificados nos documentos são: {', '.join(set(values[:3]))}. "
+                else:
+                    response = "Quanto aos valores mencionados nos documentos, "
+                    
+            elif any(word in question.lower() for word in ["quem", "pessoa", "responsável", "diretor"]):
+                # Busca por nomes de pessoas
+                import re
+                names = re.findall(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b', context)
+                
+                if names:
+                    response = f"As pessoas mencionadas são: {', '.join(set(names[:3]))}. "
+                else:
+                    response = "Sobre os responsáveis mencionados nos documentos, "
+            else:
+                response = "Com base na análise dos documentos, "
+            
+            # Adiciona as informações mais relevantes
+            info_text = " ".join(relevant_info[:2])
+            if len(info_text) > 300:
+                info_text = info_text[:300] + "..."
+            
+            response += info_text
+            
+            # Garante que a resposta tenha um tamanho mínimo
+            if len(response) < 100:
+                response += f" {' '.join(relevant_info[:3])}"
+            
+            # Limita o tamanho da resposta
+            if len(response) > 600:
+                response = response[:600] + "..."
+            
+            logger.info(f">>> Resposta aprimorada gerada com {len(response)} caracteres")
+            
+            return {
+                "answer": response,
+                "confidence": 0.75,  # Confiança boa para sistema aprimorado
+                "model": "sistema_aprimorado"
+            }
+            
+        except Exception as e:
+            logger.error(f">>> Erro no sistema aprimorado: {e}")
+            # Fallback simples
+            return {
+                "answer": f"Com base nos documentos analisados: {context[:400]}...",
+                "confidence": 0.5,
+                "model": "sistema_basico"
+            }
         
     def get_stats(self):
         if hasattr(self, 'llm_type'):

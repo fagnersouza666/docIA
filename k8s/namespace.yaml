@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: doc-ia
+  labels:
+    name: doc-ia
+    app.kubernetes.io/name: doc-ia
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: doc-ia-system
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: "2.3.0"
+  annotations:
+    description: "Namespace for DocIA - Intelligent Document Search System"
+    contact: "admin@doc-ia.local"
+    environment: "production"
